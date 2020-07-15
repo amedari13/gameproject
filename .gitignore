@@ -1,0 +1,13 @@
+*.obj
+*.lib
+*.?db
+
+
+build/**
+Debug/**
+Release/**
+.vs/**
+external/**
+src/Debug/**
+src/Release/**
+src/x64/**
