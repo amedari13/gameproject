@@ -76,9 +76,8 @@ bool Level::LoadFromFile(std::string filename)
 	// Вектор из прямоугольников изображений (TextureRect)
 	std::vector<sf::Rect<int>> subRects;
 
-	for (int y = 0; y < rows; y++)
-		for (int x = 0; x < columns; x++)
-		{
+	for (int y = 0; y < rows; y++) {
+		for (int x = 0; x < columns; x++) {
 			sf::Rect<int> rect;
 
 			rect.top = y * tileHeight;
@@ -88,6 +87,7 @@ bool Level::LoadFromFile(std::string filename)
 
 			subRects.push_back(rect);
 		}
+	}
 
 	// Работа со слоями
 	TiXmlElement* layerElement;
@@ -206,23 +206,25 @@ bool Level::LoadFromFile(std::string filename)
 				}
 				else
 				{
-					width = subRects[atoi(objectElement->Attribute("gid")) - firstTileID].width;
-					height = subRects[atoi(objectElement->Attribute("gid")) - firstTileID].height;
-					sprite.setTextureRect(subRects[atoi(objectElement->Attribute("gid")) - firstTileID]);
+					int gid_index = atoi(objectElement->Attribute("gid")) - firstTileID;
+					sf::Rect rect = subRects[gid_index];
+					width = rect.width;
+					height = rect.height;
+					sprite.setTextureRect(rect);
 				}
 
 				// Экземпляр объекта
-				Object object;
-				object.name = objectName;
-				object.type = objectType;
-				object.sprite = sprite;
+				std::shared_ptr<Object> object(new Object);
+				object->name = objectName;
+				object->type = objectType;
+				object->sprite = sprite;
 
 				sf::Rect <int> objectRect;
 				objectRect.top = y;
 				objectRect.left = x;
 				objectRect.height = height;
 				objectRect.width = width;
-				object.rect = objectRect;
+				object->rect = objectRect;
 
 				// "Переменные" объекта
 				TiXmlElement* properties;
@@ -238,7 +240,7 @@ bool Level::LoadFromFile(std::string filename)
 							std::string propertyName = prop->Attribute("name");
 							std::string propertyValue = prop->Attribute("value");
 
-							object.properties[propertyName] = propertyValue;
+							object->properties[propertyName] = propertyValue;
 
 							prop = prop->NextSiblingElement("property");
 						}
@@ -261,22 +263,22 @@ bool Level::LoadFromFile(std::string filename)
 	return true;
 }
 
-Object Level::GetObject(std::string name)
+std::shared_ptr<Object> Level::GetObject(std::string name)
 {
 	// Только первый объект с заданным именем
 	for (int i = 0; i < objects.size(); i++)
-		if (objects[i].name == name)
+		if (objects[i]->name == name)
 			return objects[i];
 
-	return Object();
+	return std::shared_ptr<Object>();
 }
 
-std::vector<Object> Level::GetObjects(std::string name)
+std::vector<std::shared_ptr<Object>> Level::GetObjects(std::string name)
 {
 	// Все объекты с заданным именем
-	std::vector<Object> vec;
+	std::vector<std::shared_ptr<Object>> vec;
 	for (int i = 0; i < objects.size(); i++)
-		if (objects[i].name == name)
+		if (objects[i]->name == name)
 			vec.push_back(objects[i]);
 
 	return vec;

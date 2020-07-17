@@ -38,13 +38,13 @@ std::string search_file(std::string file)
 
 int main()
 {
-	Object player;
+	std::shared_ptr<Object> player;
 	b2Body* playerBody;
 
-	std::vector<Object> coin;
+	std::vector<std::shared_ptr<Object>> coins;
 	std::vector<b2Body*> coinBody;
 
-	std::vector<Object> enemy;
+	std::vector<std::shared_ptr<Object>> enemies;
 	std::vector<b2Body*> enemyBody;
 	
 	srand(time(NULL));
@@ -63,65 +63,68 @@ int main()
 
 	sf::Vector2i tileSize = lvl.GetTileSize();
 
-	std::vector<Object> block = lvl.GetObjects("block");
-	for (int i = 0; i < block.size(); i++)
+	std::vector<std::shared_ptr<Object>> blocks = lvl.GetObjects("block");
+	for(auto block: blocks)
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = b2_staticBody;
-		bodyDef.position.Set(block[i].rect.left + tileSize.x / 2 * (block[i].rect.width / tileSize.x - 1),
-			block[i].rect.top + tileSize.y / 2 * (block[i].rect.height / tileSize.y - 1));
+		bodyDef.position.Set(
+			block->rect.left + tileSize.x / 2 * (block->rect.width / tileSize.x - 1),
+			block->rect.top + tileSize.y / 2 * (block->rect.height / tileSize.y - 1));
 		b2Body* body = world.CreateBody(&bodyDef);
 		b2PolygonShape shape;
-		shape.SetAsBox(block[i].rect.width / 2, block[i].rect.height / 2);
+		shape.SetAsBox(block->rect.width / 2, block->rect.height / 2);
 		body->CreateFixture(&shape, 1.0f);
 	}
 
-	coin = lvl.GetObjects("coin");
-	for (int i = 0; i < coin.size(); i++)
+	coins = lvl.GetObjects("coin");
+	for(auto coin: coins)
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = b2_dynamicBody;
-		bodyDef.position.Set(coin[i].rect.left + tileSize.x / 2 * (coin[i].rect.width / tileSize.x - 1),
-			coin[i].rect.top + tileSize.y / 2 * (coin[i].rect.height / tileSize.y - 1));
+		bodyDef.position.Set(
+			coin->rect.left + tileSize.x / 2 * (coin->rect.width / tileSize.x - 1),
+			coin->rect.top + tileSize.y / 2 * (coin->rect.height / tileSize.y - 1));
 		bodyDef.fixedRotation = true;
 		b2Body* body = world.CreateBody(&bodyDef);
 		b2PolygonShape shape;
-		shape.SetAsBox(coin[i].rect.width / 2, coin[i].rect.height / 2);
+		shape.SetAsBox(coin->rect.width / 2, coin->rect.height / 2);
 		body->CreateFixture(&shape, 1.0f);
 		coinBody.push_back(body);
 	}
 
-	enemy = lvl.GetObjects("enemy");
-	for (int i = 0; i < enemy.size(); i++)
+	enemies = lvl.GetObjects("enemy");
+	for (auto enemy: enemies)
 	{
 		b2BodyDef bodyDef;
 		bodyDef.type = b2_dynamicBody;
-		bodyDef.position.Set(enemy[i].rect.left +
-			tileSize.x / 2 * (enemy[i].rect.width / tileSize.x - 1),
-			enemy[i].rect.top + tileSize.y / 2 * (enemy[i].rect.height / tileSize.y - 1));
+		bodyDef.position.Set(
+			enemy->rect.left +
+			tileSize.x / 2 * (enemy->rect.width / tileSize.x - 1),
+			enemy->rect.top + tileSize.y / 2 * (enemy->rect.height / tileSize.y - 1));
 		bodyDef.fixedRotation = true;
 		b2Body* body = world.CreateBody(&bodyDef);
-		b2PolygonShape shape;
-		shape.SetAsBox(enemy[i].rect.width / 2, enemy[i].rect.height / 2);
+		b2PolygonShape shape; 
+		shape.SetAsBox(enemy->rect.width / 2, enemy->rect.height / 2);
 		body->CreateFixture(&shape, 1.0f);
 		enemyBody.push_back(body);
 	}
 
 
 	player = lvl.GetObject("player");
+	assert(player);
+
 	b2BodyDef bodyDef;
 	bodyDef.type = b2_dynamicBody;
-	bodyDef.position.Set(player.rect.left, player.rect.top);
+	bodyDef.position.Set(player->rect.left, player->rect.top);
 	bodyDef.fixedRotation = true;
 	playerBody = world.CreateBody(&bodyDef);
-	b2PolygonShape shape; shape.SetAsBox(player.rect.width / 2, player.rect.height / 2);
+	b2PolygonShape shape; shape.SetAsBox(player->rect.width / 2, player->rect.height / 2);
 	b2FixtureDef fixtureDef;
 	fixtureDef.shape = &shape;
 	fixtureDef.density = 1.0f; fixtureDef.friction = 0.3f;
 	playerBody->CreateFixture(&fixtureDef);
-
-
-
+	
 	sf::Vector2i screenSize(800, 600);
 
 	sf::RenderWindow window;
@@ -168,7 +171,7 @@ int main()
 				if (c->GetFixtureA() == coinBody[i]->GetFixtureList())
 				{
 					coinBody[i]->DestroyFixture(coinBody[i]->GetFixtureList());
-					coin.erase(coin.begin() + i);
+					coins.erase(coins.begin() + i);
 					coinBody.erase(coinBody.begin() + i);
 					stop = true; 
 					break;
@@ -182,7 +185,7 @@ int main()
 						playerBody->SetLinearVelocity(b2Vec2(0.0f, -10.0f));
 
 						enemyBody[i]->DestroyFixture(enemyBody[i]->GetFixtureList());
-						enemy.erase(enemy.begin() + i);
+						enemies.erase(enemies.begin() + i);
 						enemyBody.erase(enemyBody.begin() + i);
 						stop = true;
 						break;
@@ -205,30 +208,29 @@ int main()
 			}
 		}
 
-
 		b2Vec2 pos = playerBody->GetPosition();
 		view.setCenter(pos.x + screenSize.x / 4, pos.y + screenSize.y / 4);
 		window.setView(view);
 
-		player.sprite.setPosition(pos.x, pos.y);
+		player->sprite.setPosition(pos.x, pos.y);
 
-		for (int i = 0; i < coin.size(); i++)
-			coin[i].sprite.setPosition(coinBody[i]->GetPosition().x, coinBody[i]->GetPosition().y);
+		for (int i = 0; i < coins.size(); i++)
+			coins[i]->sprite.setPosition(coinBody[i]->GetPosition().x, coinBody[i]->GetPosition().y);
 
-		for (int i = 0; i < enemy.size(); i++)
-			enemy[i].sprite.setPosition(enemyBody[i]->GetPosition().x, enemyBody[i]->GetPosition().y);
+		for (int i = 0; i < enemies.size(); i++)
+			enemies[i]->sprite.setPosition(enemyBody[i]->GetPosition().x, enemyBody[i]->GetPosition().y);
 
 		window.clear();
 
 		lvl.Draw(window);
 
-		window.draw(player.sprite);
+		window.draw(player->sprite);
 
-		for (int i = 0; i < coin.size(); i++)
-			window.draw(coin[i].sprite);
+		for (int i = 0; i < coins.size(); i++)
+			window.draw(coins[i]->sprite);
 
-		for (int i = 0; i < enemy.size(); i++)
-			window.draw(enemy[i].sprite);
+		for (int i = 0; i < enemies.size(); i++)
+			window.draw(enemies[i]->sprite);
 
 		window.display();
 	}

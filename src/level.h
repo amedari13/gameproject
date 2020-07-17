@@ -6,6 +6,10 @@
 #include <map>
 #include <SFML/Graphics.hpp>
 
+#pragma warning(disable: 4018 4244)
+
+
+#include <memory>
 
 struct Object
 {
@@ -31,8 +35,8 @@ class Level
 {
 public:
 	bool LoadFromFile(std::string filename);
-	Object GetObject(std::string name);
-	std::vector<Object> GetObjects(std::string name);
+	std::shared_ptr<Object> GetObject(std::string name);
+	std::vector<std::shared_ptr<Object>> GetObjects(std::string name);
 	void Draw(sf::RenderWindow& window);
 	sf::Vector2i GetTileSize();
 
@@ -41,7 +45,7 @@ private:
 	int firstTileID;
 	sf::Rect<float> drawingBounds;
 	sf::Texture tilesetImage;
-	std::vector<Object> objects;
+	std::vector<std::shared_ptr<Object>> objects;
 	std::vector<Layer> layers;
 };
 
