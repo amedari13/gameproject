@@ -14,15 +14,9 @@
 #pragma comment(lib,"winmm.lib")
 #pragma comment(lib,"gdi32.lib")    
 
-//#ifndef NDEBUG
-//#pragma comment(lib,"sfml-graphics-s.lib")
-//#pragma comment(lib,"sfml-window-s.lib")
-//#pragma comment(lib,"sfml-system-s.lib")
-//#else
 #pragma comment(lib,"sfml-graphics-s-d.lib")
 #pragma comment(lib,"sfml-window-s-d.lib")
 #pragma comment(lib,"sfml-system-s-d.lib")
-//#endif
 
 
 std::string search_file(std::string file)
@@ -62,7 +56,7 @@ int main()
 	b2World world(gravity);
 
 	sf::Vector2i tileSize = lvl.GetTileSize();
-
+	 
 	std::vector<std::shared_ptr<Object>> blocks = lvl.GetObjects("block");
 	for(auto block: blocks)
 	{
@@ -122,7 +116,8 @@ int main()
 	b2PolygonShape shape; shape.SetAsBox(player->rect.width / 2, player->rect.height / 2);
 	b2FixtureDef fixtureDef;
 	fixtureDef.shape = &shape;
-	fixtureDef.density = 1.0f; fixtureDef.friction = 0.3f;
+	fixtureDef.density = 1.0f; fixtureDef.friction = 0.6f;
+	fixtureDef.restitution=0.2f;//добавила прыгучесть и поменяла силу трения
 	playerBody->CreateFixture(&fixtureDef);
 	
 	sf::Vector2i screenSize(800, 600);
@@ -148,14 +143,28 @@ int main()
 				break;
 
 			case sf::Event::KeyPressed:
-				if (evt.key.code == sf::Keyboard::W && playerBody->GetLinearVelocity().y == 0)
-					playerBody->SetLinearVelocity(b2Vec2(0.0f, -15.0f));
 
-				if (evt.key.code == sf::Keyboard::D)
-					playerBody->SetLinearVelocity(b2Vec2(5.0f, 0.0f));
+				if(evt.key.code == sf::Keyboard::W && playerBody->GetLinearVelocity().x > 0
+					&&playerBody->GetLinearVelocity().y == 0)
+					playerBody->SetLinearVelocity(b2Vec2(7.0f, -15.0f)); //по диагонали вправо
 
-				if (evt.key.code == sf::Keyboard::A)
-					playerBody->SetLinearVelocity(b2Vec2(-5.0f, 0.0f));
+				if (evt.key.code == sf::Keyboard::W && playerBody->GetLinearVelocity().x < 0
+					&& playerBody->GetLinearVelocity().y == 0)
+					playerBody->SetLinearVelocity(b2Vec2(-7.0f, -15.0f)); //по диагонали влево
+
+				if (evt.key.code == sf::Keyboard::S)
+					playerBody->SetLinearVelocity(b2Vec2(0.0f, 20.0f)); //вниз
+
+				if ((evt.key.code == sf::Keyboard::W || evt.key.code == sf::Keyboard::Space)
+					&& playerBody->GetLinearVelocity().y == 0) 
+					playerBody->SetLinearVelocity(b2Vec2(0.0f, -15.0f)); //вверх
+				
+				if (evt.key.code == sf::Keyboard::D) 
+					playerBody->SetLinearVelocity(b2Vec2(7.0f, 0.0f)); //вправо
+				
+				if (evt.key.code == sf::Keyboard::A) 
+					playerBody->SetLinearVelocity(b2Vec2(-7.0f, 0.0f));//влево
+								
 				break;
 			}
 		}
