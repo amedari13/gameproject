@@ -40,6 +40,8 @@ int main()
 
 	std::vector<std::shared_ptr<Object>> enemies;
 	std::vector<b2Body*> enemyBody;
+
+	std::vector<b2Body*> blockBody;
 	
 	srand(time(NULL));
 	
@@ -52,7 +54,7 @@ int main()
 	}
 
 
-	b2Vec2 gravity(0.0f, 1.0f);
+	b2Vec2 gravity(0.0f, 10.0f);
 	b2World world(gravity);
 
 	sf::Vector2i tileSize = lvl.GetTileSize();
@@ -69,6 +71,7 @@ int main()
 		b2PolygonShape shape;
 		shape.SetAsBox(block->rect.width / 2, block->rect.height / 2);
 		body->CreateFixture(&shape, 1.0f);
+		blockBody.push_back(body);
 	}
 
 	coins = lvl.GetObjects("coin");
@@ -116,11 +119,12 @@ int main()
 	b2PolygonShape shape; shape.SetAsBox(player->rect.width / 2, player->rect.height / 2);
 	b2FixtureDef fixtureDef;
 	fixtureDef.shape = &shape;
-	fixtureDef.density = 1.0f; fixtureDef.friction = 0.6f;
-	fixtureDef.restitution=0.2f;//добавила прыгучесть и поменяла силу трения
+	fixtureDef.density = 10.0f; 
+	fixtureDef.friction = 10.f;
+	//fixtureDef.restitution=0.2f; //добавила прыгучесть и поменяла силу трения
 	playerBody->CreateFixture(&fixtureDef);
 	
-	sf::Vector2i screenSize(800, 600);
+	sf::Vector2i screenSize(1024, 800);
 
 	sf::RenderWindow window;
 	window.create(sf::VideoMode(screenSize.x, screenSize.y), "Game");
@@ -141,35 +145,11 @@ int main()
 			case sf::Event::Closed:
 				window.close();
 				break;
-
-			case sf::Event::KeyPressed:
-
-				if(evt.key.code == sf::Keyboard::W && playerBody->GetLinearVelocity().x > 0
-					&&playerBody->GetLinearVelocity().y == 0)
-					playerBody->SetLinearVelocity(b2Vec2(7.0f, -15.0f)); //по диагонали вправо
-
-				if (evt.key.code == sf::Keyboard::W && playerBody->GetLinearVelocity().x < 0
-					&& playerBody->GetLinearVelocity().y == 0)
-					playerBody->SetLinearVelocity(b2Vec2(-7.0f, -15.0f)); //по диагонали влево
-
-				if (evt.key.code == sf::Keyboard::S)
-					playerBody->SetLinearVelocity(b2Vec2(0.0f, 20.0f)); //вниз
-
-				if ((evt.key.code == sf::Keyboard::W || evt.key.code == sf::Keyboard::Space)
-					&& playerBody->GetLinearVelocity().y == 0) 
-					playerBody->SetLinearVelocity(b2Vec2(0.0f, -15.0f)); //вверх
-				
-				if (evt.key.code == sf::Keyboard::D) 
-					playerBody->SetLinearVelocity(b2Vec2(7.0f, 0.0f)); //вправо
-				
-				if (evt.key.code == sf::Keyboard::A) 
-					playerBody->SetLinearVelocity(b2Vec2(-7.0f, 0.0f));//влево
-								
-				break;
 			}
 		}
 
 		world.Step(1.0f / 60.0f, 1, 1);
+		auto curVel = playerBody->GetLinearVelocity();
 
 		bool stop = false;
 		for (b2ContactEdge* ce = playerBody->GetContactList(); ce && !stop; ce = ce->next)
@@ -179,6 +159,7 @@ int main()
 			for (int i = 0; i < coinBody.size(); i++)
 				if (c->GetFixtureA() == coinBody[i]->GetFixtureList())
 				{
+					// игрок забрал монету
 					coinBody[i]->DestroyFixture(coinBody[i]->GetFixtureList());
 					coins.erase(coins.begin() + i);
 					coinBody.erase(coinBody.begin() + i);
@@ -186,12 +167,26 @@ int main()
 					break;
 				}
 
+			for (int i = 0; i < blockBody.size(); i++)
+				if (c->GetFixtureA() == blockBody[i]->GetFixtureList())
+				{
+					if (c->GetManifold()->localPoint.y != 0) {
+						// сверху или снизу
+
+					} else {
+						// сбоку
+						curVel.x = -curVel.x;
+					}
+					break;
+				}
+
 			for (int i = 0; i < enemyBody.size(); i++)
 				if (c->GetFixtureA() == enemyBody[i]->GetFixtureList())
 				{
-					if (playerBody->GetPosition().y < enemyBody[i]->GetPosition().y)
-					{
-						playerBody->SetLinearVelocity(b2Vec2(0.0f, -10.0f));
+					if (playerBody->GetLinearVelocity().y > 0)
+					{	// игрок упал на врага
+
+						curVel.y = -curVel.y;
 
 						enemyBody[i]->DestroyFixture(enemyBody[i]->GetFixtureList());
 						enemies.erase(enemies.begin() + i);
@@ -200,10 +195,11 @@ int main()
 						break;
 					}
 					else
-					{
+					{	// игрок столкнулся с врагом
 						int tmp = (playerBody->GetPosition().x < enemyBody[i]->GetPosition().x)
 							? -1 : 1;
-						playerBody->SetLinearVelocity(b2Vec2(10.0f * tmp, 0.0f));
+						curVel.x = 50.0f * tmp;
+						curVel.y = 0.f;
 					}
 				}
 		}
@@ -212,10 +208,26 @@ int main()
 		{
 			if (enemyBody[i]->GetLinearVelocity() == b2Vec2_zero)
 			{
+				// враг не движется (начало уровня)
 				int tmp = (rand() % 2 == 1) ? 1 : -1;
 				enemyBody[i]->SetLinearVelocity(b2Vec2(5.0f * tmp, 0.0f));
 			}
 		}
+
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) //вверх
+			&& playerBody->GetLinearVelocity().y == 0) {
+			curVel.y = -35.0f;
+		}
+
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) { //вправо
+			curVel.x = std::min(curVel.x + 1.f, 20.f);		
+		}
+
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) { //влево
+			curVel.x = std::max(curVel.x - 1.f, -20.f);
+		}
+
+		playerBody->SetLinearVelocity(curVel);
 
 		b2Vec2 pos = playerBody->GetPosition();
 		view.setCenter(pos.x + screenSize.x / 4, pos.y + screenSize.y / 4);
